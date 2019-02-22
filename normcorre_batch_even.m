@@ -53,11 +53,6 @@ if isa(Y,'char')
         T = file_length/imsize;
         sizY = [FOV,T];
         fclose(fid);        
-    elseif strcmpi(ext,'avi')
-        filetype = 'avi';
-        sizY = size(read_file(Y));
-        FOV = sizY(1:2);
-        T = sizY(end);
     end    
 elseif isobject(Y)
     filetype = 'mem';
@@ -137,8 +132,6 @@ switch filetype
         Y_temp = read_file(Y,interval(1),init_batch,[],tiffInfo);
     case 'hdf5'
         Y_temp = read_file(Y,interval(1),init_batch);        
-    case 'avi'
-        Y_temp = read_file(Y,interval(1),init_batch);
     case 'mem'
         Y_temp = Y.(var_name)(otherdims{:},interval);
     case 'mat'
@@ -148,7 +141,7 @@ switch filetype
 end
 data_type = class(Y_temp);
 Y_temp = single(Y_temp);
-use_proj = true;
+
 if nargin < 3 || isempty(template)
     fprintf('Registering the first %i frames just to obtain a good template....',init_batch);
     template_in = median(Y_temp,nd+1)+add_value;
@@ -233,8 +226,6 @@ for it = 1:iter
         switch filetype
             case 'tif'
                 Ytm = single(read_file(Y, t, min(t+bin_width-1,T)-t+1, [], tiffInfo));
-            case 'avi'
-                Ytm = single(read_file(Y, t, min(t+bin_width-1,T)-t+1));
             case 'hdf5'
                 Ytm = single(h5read(Y,data_name,[ones(1,nd),t],[sizY(1:nd),min(t+bin_width-1,T)-t+1]));
             case 'mem'
