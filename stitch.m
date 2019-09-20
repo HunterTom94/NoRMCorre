@@ -1,11 +1,11 @@
 clc
 clear
 
-input_folder = 'C:\Lab\#Yinan\ROI Extraction\Videos\crop_output\';
-bg_folder = 'C:\Lab\#Yinan\ROI Extraction\Videos\bg_output\';
-root_folder = 'C:\Lab\#Yinan\ROI Extraction\Videos\';
-finished_folder = 'C:\Lab\#Yinan\ROI Extraction\Videos\finished_videos\';
-failed_folder = 'C:\Lab\#Yinan\ROI Extraction\Videos\failed_videos\';
+input_folder = 'D:\Gut Imaging\Videos\crop_output\';
+bg_folder = 'D:\Gut Imaging\Videos\bg_output\';
+root_folder = 'D:\Gut Imaging\Videos\';
+finished_folder = 'D:\Gut Imaging\Videos\finished_videos\';
+failed_folder = 'D:\Gut Imaging\Videos\failed_videos\';
 
 files = dir(input_folder);
 names = {};
@@ -39,7 +39,12 @@ for i = 1:length(unique_indices)
             ready_string_check{end+1} = names{k};
         end
     end
-    if length(ready_string_check) == 9
+    if length(ready_string_check)>0
+        ready_string_check_split = strsplit(ready_string_check{1},'_');
+        h = str2num(ready_string_check_split{find(strcmp(ready_string_check_split,'h'))+1});
+        v = str2num(ready_string_check_split{find(strcmp(ready_string_check_split,'v'))+1});
+    end
+    if length(ready_string_check) == h*v
         ready_indices{end+1} = ready_string_check;
     else
         crop_index = [];
@@ -47,7 +52,7 @@ for i = 1:length(unique_indices)
             index_split = strsplit(ready_string_check{j},'_');
             crop_index = [crop_index,str2num(index_split{end})];
         end
-        num_list = 1:9;
+        num_list = 1:h*v;
         unique_index = index_split{1};
         for l = 2:length(index_split)
             if ~strcmp(index_split{l},'gs')
@@ -66,7 +71,9 @@ for i = 1:length(unique_indices)
         end
     end
 end
+
 %%
+
 
 for i = 1:length(ready_indices)
     jump = 0;
@@ -80,9 +87,10 @@ for i = 1:length(ready_indices)
         end
     end
     
-    out_foldernames1 = dir('C:\Lab\#Yinan\ROI Extraction\Videos\stitch_output\**\');
-    out_foldernames2 = dir('C:\Lab\#Yinan\ROI Extraction\Videos\AA_dosage_curve\');
-    out_foldernames = [out_foldernames1; out_foldernames2];
+    out_foldernames1 = dir('D:\Gut Imaging\Videos\stitch_output\**\');
+    out_foldernames2 = dir('D:\Gut Imaging\Videos\Results\**\');
+    out_foldernames3 = dir('D:\Gut Imaging\Videos\Temp\**\');
+    out_foldernames = [out_foldernames1; out_foldernames2; out_foldernames3];
     target_folder_names = {};
     target_folder_path = {};
     for j = 1:length(out_foldernames)
@@ -105,8 +113,10 @@ for i = 1:length(ready_indices)
 %             strcat('has folder:', unique_index)
             
             stitch_name = strcat(target_folder_path{j},target_folder_names{j},'\stitched_',unique_index,'.tif');
+            max_name_split = split(stitch_name,'\');
+            max_name = strcat(strjoin(max_name_split(1:end-1),'\'),'\max_',unique_index,'.tif');
             
-            if isfile(stitch_name)
+            if isfile(stitch_name) || isfile(max_name)
                 jump = 1;
                 if ~isfile(strcat(finished_folder,success_name))
                     if isfile(strcat(root_folder,success_name))
@@ -126,12 +136,12 @@ for i = 1:length(ready_indices)
         continue
     end
     if ~contain_result
-            folder_name = strcat('C:\Lab\#Yinan\ROI Extraction\Videos\stitch_output\',unique_index);
+            folder_name = strcat('D:\Gut Imaging\Videos\stitch_output\',unique_index);
             if ~exist(folder_name, 'dir')
                mkdir(folder_name)
             end
             stitch_name = strcat(folder_name,'\stitched_',unique_index,'.tif');
-%             strcat('no folder:', unique_index)
+            max_name = strcat(folder_name,'\max_',unique_index,'.tif');
     end
     
     crop_num_split = strsplit(ready_indices{i}{1},'_');
@@ -140,17 +150,23 @@ for i = 1:length(ready_indices)
     crop_storage_array = cell(crop_num_horizontal,crop_num_vertical);
     for j = 1:length(ready_indices{i})
         absolute_file_address = strcat(input_folder,ready_indices{i}{j},'.tif');
+        ci_split = strsplit(ready_indices{i}{j},'ci');
+        ci_split_split = strsplit(ci_split{2},'_');
+        crop_index = str2num(ci_split_split{2});
         Y = read_file(absolute_file_address);
-        
-        crop_index_vertical = mod(j,crop_num_vertical);
-        if crop_index_vertical == 0
-            crop_index_vertical = crop_num_vertical;
+        if crop_num_vertical == 1 || crop_num_horizontal == 1
+            crop_storage_array{j} = Y;
+        else
+            crop_index_vertical = mod(crop_index,crop_num_vertical);
+            if crop_index_vertical == 0
+                crop_index_vertical = crop_num_vertical;
+            end
+            crop_index_horizontal = floor(crop_index/crop_num_vertical)+1;
+            if mod(crop_index,crop_num_vertical)==0
+                crop_index_horizontal = crop_index_horizontal - 1;
+            end
+            crop_storage_array{crop_index_horizontal,crop_index_vertical} = Y;
         end
-        crop_index_horizontal = floor(j/crop_num_horizontal)+1;
-        if mod(j,crop_num_vertical)==0
-            crop_index_horizontal = crop_index_horizontal - 1;
-        end
-        crop_storage_array{crop_index_horizontal,crop_index_vertical} = Y;
         clear Y
     end
     
@@ -163,6 +179,10 @@ for i = 1:length(ready_indices)
         h_concat = cat(1,h_concat,v_concat);
     end
     saveastiff(h_concat,char(stitch_name));
+    
+    if ~isfile(max_name)
+        saveastiff(max(h_concat,[],3),char(max_name));
+    end
     vars = {'h_concat','v_concat','Y','crop_storage_array'};
     clear(vars{:})
     
@@ -174,4 +194,5 @@ for i = 1:length(ready_indices)
     if isfile(delete_name)
         delete(delete_name)
     end
+    
 end
