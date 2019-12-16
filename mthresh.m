@@ -1,4 +1,4 @@
-function [ thresholded, laplace ] = mthresh( image, threshold, size )
+function [ thresholded, laplace ] = mthresh( image, threshold, size_min, size_max )
 %% MTHRESH threshold image using Laplace operator
 %thresholded is the binary ROI mask
 %laplace is the Laplace operator of image
@@ -16,7 +16,7 @@ locthresh=-threshold*std(laplace(:));  %calculate wighted threshold
 thresholded=laplace<locthresh;  %thresholding
 
 %% removing ROIs smaller than size
-if size
+if size_min || size_max
    rp=regionprops(thresholded, 'Area', 'PixelIdxList');
    
    nROIs=numel(rp);     %number of ROIs 
@@ -24,16 +24,15 @@ if size
    plist={rp.PixelIdxList}; %linear pixel indices
    
    for ii=1:nROIs
-       if sizes(ii)<=size
+       if sizes(ii)<=size_min
           pixels=cell2mat(plist(ii));
-           thresholded(pixels)=0;     %set pixels to 0
-          
+          thresholded(pixels)=0;     %set pixels to 0
        end
-           
+       if sizes(ii)>=size_max
+          pixels=cell2mat(plist(ii));
+          thresholded(pixels)=0;     %set pixels to 0
+       end    
    end
-        
 end
-
-
 end
 

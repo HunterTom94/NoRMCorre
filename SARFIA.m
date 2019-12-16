@@ -9,7 +9,7 @@
 % MRC Laboratory of Molecular Biology, Cambridge, UK
 %
 %% Load image using load3d.m
-[imagefile,path] = uigetfile('*.tif','Select File','D:\Gut Imaging\Videos\Temp\');
+[imagefile,path] = uigetfile('*.tif','Select File','D:\Gut Imaging\Videos\Temp');
 root_folder = path;
 ImageStack=load3d([path imagefile]);
 % ImageStack=gpuArray(load3d([path imagefile]));  
@@ -29,7 +29,7 @@ while 1
         end
     end
     
-    
+    %%
     GassianImage = conv2(MaxImage, GaussFilter,'same');
     %Display
     sortGassianImage = sort(GassianImage(:));
@@ -42,6 +42,7 @@ while 1
     f = figure;
     f.WindowState = 'maximized';
     imshow(GassianImage, [lo hi],'InitialMagnification', 'fit')    %show max
+    
     title(titlestr)
     
     Done=input('Gaussian Blur Good? (0/1): ');
@@ -51,13 +52,15 @@ while 1
 end
 %% Perform thresholding based on Laplace operator using mthresh.m
 threshold=input('Threshold: ');      %Threshold used for segmentation
-ROIsize=input('Remove ROIs smaller than: ');  %size of ROIs to reject
+ROIsize_min=input('Remove ROIs smaller than: ');  %size of ROIs to reject
+ROIsize_max=input('Remove ROIs bigger than: ');
 while 1
-    [ROIMask,Laplace]=mthresh(GassianImage,threshold, ROIsize);
+    [ROIMask,Laplace]=mthresh(GassianImage,threshold, ROIsize_min, ROIsize_max);
     close
     f = figure;
     f.WindowState = 'maximized';
-    imshow(GassianImage, [0 hi], 'InitialMagnification', 'fit','Border','tight')
+    imshow(GassianImage, [0 hi], 'InitialMagnification', 'fit')
+%     imshow(GassianImage, [0 hi], 'InitialMagnification', 'fit','Border','tight')
     hold all
     [C,h] = contour(ROIMask,1);
     h.LineColor = 'y';
@@ -69,10 +72,12 @@ while 1
     end
     
     threshold=input('Threshold: ');      %Threshold used for segmentation
-    ROIsize=input('Remove ROIs smaller than: ');  %size of ROIs to reject
+    ROIsize_min=input('Remove ROIs smaller than: ');
+    ROIsize_max=input('Remove ROIs bigger than: '); %size of ROIs to reject
 
 end
-
+para_cell = {'filterSize', filterSize; 'Threshold', threshold; 'size min threshold', ROIsize_min; 'size max threshold', ROIsize_max};
+writetable(cell2table(para_cell),[path 'SARFIA_para.csv'])
 %% Generate roi.csv
 ROILabel = ones(size(ROIMask));
 pl = regionprops(ROIMask,'PixelList');
@@ -118,5 +123,6 @@ end
 figurename=[trace_folder '\Trace_' int2str(figure_count)];
 saveas(f,figurename,'png')
 %% Cleaning up
-clearvars hi ii invlpl lo ntraces place threshold titlestr
-clearvars ROIsize Done
+clearvars hi ii invlpl lo ntraces place threshold titlestr 
+clearvars ROIsize_min ROIsize_max Done
+clearvars MaxImage ImageStack GassianImage
